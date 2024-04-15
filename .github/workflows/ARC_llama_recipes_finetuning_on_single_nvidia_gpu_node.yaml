@@ -1,0 +1,158 @@
+name: "[ARC][GPU] llama-recipes model Fine Tuning on Self-Hosted GPU k8s Nodes."
+on:
+  workflow_dispatch: # Only triggering workflow manually.
+    inputs:
+      runner:
+        description: 'GHA Runner Scale Set to run workflow on.'
+        required: true
+        default: mg-fork-gha-runnes-gpu
+        # default: gha-runner-scale-set-nvidia-single-gpu
+
+      debug:
+          description: 'Run debugging steps?'
+          required: false
+          default: "true"
+
+      sleep_time:
+        description: '[DEBUG] sleep time for debugging'
+        required: true
+        default: "5"
+
+    #   prompt:
+    #     description: 'User test for prompting'
+    #     required: true
+    #     default: "Who is Ironman?"
+
+      model:
+        description: 'Base model to use for inference.'
+        required: true
+        default: llama-2-7b-hf
+
+      max_train_steps:
+        description: 'Mx number of steps to run Fine Tuning process for'
+        required: true
+        default: "6"
+
+
+env:
+  MODELS_PATH: '/data/llama2/models'
+  DEFAULT_MODEL: 'llama-2-7b-hf'
+  # OUTPUT_PATH: '/tmp/llama/models_ft/Llama-2-7b-peft-samsum-1'
+  DEFAULT_DATASET: 'samsum_dataset'
+  # BNB_CUDA_VERSION: '121'
+  # DEFAULT_PROMPT_FILE: 'samsum_prompt.txt'
+  FINETUNING_RECIPE_PATH: recipes/finetuning
+
+jobs:
+  execute_workflow:
+    name: Run workload on Self-hosted GPU k8s runner
+    defaults:
+      run:
+        shell: bash # default shell to run all steps for a given job.
+    runs-on: ${{ github.event.inputs.runner != '' &&  github.event.inputs.runner || 'mg-fork-gha-runnes-gpu' }}
+    steps:
+
+      - name: "[DEBUG] ls -la mounted EFS volume"
+        id: efs_volume
+        if: github.event.inputs.debug == 'true'
+        run: |
+            echo "========= Content of the EFS mount ============="
+            ls -la ${{ env.MODELS_PATH }}
+
+      - name: "Check if selected model exists in EFS volume"
+        id: check_if_model_exists
+        run: |
+            if [ ! -d ${{ env.MODELS_PATH }}/${{ inputs.model }} ]; then
+                echo "Model '${{ inputs.model }}' does not exist in mounted EFS volume, Terminating workflow."
+                exit 1
+            fi
+            echo "Content of '${{ inputs.model }}' model"
+            ls -la ${{ env.MODELS_PATH }}/${{ inputs.model }}
+
+            exit 0
+
+      - name: "[DEBUG] Get OS information"
+        id: os_info
+        if: github.event.inputs.debug == 'true'
+        run: |
+            cat /etc/os-release
+
+      - name: "[DEBUG] nvidia-smi"
+        id: nvidia-smi
+        if: github.event.inputs.debug == 'true'
+        run: |
+          which nvidia-smi
+          nvidia-smi
+
+      - name: "Checkout 'llama-recipes' repository"
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: "[DEBUG] Content of the 'llama-recipes' repository after checkout"
+        id: content_after_checkout
+        if: github.event.inputs.debug == 'true'
+        run: |
+            ls -la ${GITHUB_WORKSPACE}
+
+      - name: "Installing PyTorch and llama_recipes module"
+        id: pip_install
+        run: |
+          pip install -U pip setuptools
+          # pip install -r requirements.txt
+          # pip install --extra-index-url https://download.pytorch.org/whl/test/cu118 -e '.[tests,auditnlg,vllm]'
+          # pip install --extra-index-url https://download.pytorch.org/whl/test/cu118 -e '.[auditnlg,vllm]' 
+          pip install --extra-index-url https://download.pytorch.org/whl/test/cu118 -e llama-recipes
+
+
+      - name: "[DEBUG] sleep"
+        id: sleep
+        if: ${{ github.event.inputs.debug == 'true' && github.event.inputs.sleep_time != '' }}
+        run: |
+            sleep ${{ inputs.sleep_time }}
+
+      - name: "Running Fine Tuning"
+        id: fine_tuning 
+        if: steps.check_if_model_exists.outcome == 'success'
+        run: |
+          export OUTPUT_DIR=${GITHUB_WORKSPACE}/outputs/${{ github.sha }}
+          mkdir -p ${OUTPUT_DIR}
+
+          cd $GITHUB_WORKSPACE/examples && cat ./${{ env.DEFAULT_PROMPT_FILE }} | python3 -m inference \
+            --model_name ${{ env.MODELS_PATH }}/${{ inputs.model }} \
+            --output_file ${OUTPUT_DIR}/result.txt
+
+          cd $GITHUB_WORKSPACE_PATH/${{ env.FINETUNING_RECIPE_PATH }} && python3 -m finetuning \
+            --max_train_step ${{ inputs.max_train_steps }} \
+            --use_peft \
+            --peft_method lora \
+            --quantization \
+            --model_name ${{ env.MODELS_PATH }}/${{ inputs.model }} \
+            --output_file ${OUTPUT_DIR} \
+            --batch_size_training 2  \
+            --gradient_accumulation_steps 2  \
+            --num_epochs 1  \
+            --dataset ${{ env.DEFAULT_DATASET }}
+
+        #   ls -la ${OUTPUT_DIR}/result.txt
+        #   cat ${OUTPUT_DIR}/result.txt
+
+        #   # Setting a OUTPUT_FILE_PATH variable to pass output file path to downstream job steps.
+        #   echo "OUTPUT_FILE_PATH=${OUTPUT_DIR}/result.txt" >> $GITHUB_ENV
+
+        #   # Setting content of the inference output file as job output "result".
+        #   EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+        #   {
+        #     echo "result<<$EOF"
+        #     echo "$(cat ${OUTPUT_DIR}/result.txt)"
+        #     echo "$EOF"
+        #   } >> $GITHUB_OUTPUT
+
+    #   - name: "Publishing results of running interence as an afrifact"
+    #     uses: actions/upload-artifact@v3
+    #     with:
+    #       name: inference_results
+    #       path: ${{ env.OUTPUT_FILE_PATH }}
+
+    #   - name: "Publishing results of running interence as an afrifact"
+    #     run: |
+    #         cat ${{ env.OUTPUT_FILE_PATH }}%
