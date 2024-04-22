@@ -1,0 +1,39 @@
+name: "[DEBUG] Running debug workflow on Self-Hosted CPU k8s Nodes."
+on:
+  workflow_dispatch: # Only triggering workflow manually.
+    inputs:
+      runner:
+        description: 'GHA Runner Scale Set to run workflow on.'
+        required: true
+        default: "mg-fork-gha-runnes-cpu"
+
+      debug:
+          description: 'Run debugging steps?'
+          required: false
+          default: "true"
+
+      sleep_time:
+        description: '[DEBUG] sleep time for debugging'
+        required: true
+        default: "5"
+
+# env:
+#   MODELS_PATH: '/data/llama2/models'
+#   DEFAULT_MODEL: 'llama-2-7b-hf'
+#   OUTPUT_PATH: '/tmp/llama/models_ft/Llama-2-7b-peft-samsum-1'
+#   DEFAULT_DATASET: 'samsum_dataset'
+
+jobs:
+  execute_workflow:
+    name: Run workload on Self-hosted CPU k8s runner
+    defaults:
+      run:
+        shell: bash # default shell to run all steps for a given job.
+    runs-on: ${{ github.event.inputs.runner != '' &&  github.event.inputs.runner || 'mg-fork-gha-runnes-cpu' }}
+    steps:
+
+      - name: "[DEBUG] sleep"
+        id: sleep
+        if: ${{ github.event.inputs.debug == 'true' && github.event.inputs.sleep_time != '' }}
+        run: |
+            sleep ${{ inputs.sleep_time }}
