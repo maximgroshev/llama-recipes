@@ -1,4 +1,4 @@
-name: "[ARC][GPU] llama-recipes model Fine Tuning on Self-Hosted GPU k8s Nodes."
+name: "[GHA][GPU][LLAMA2] llama-recipes LLama2 model Fine Tuning on Self-Hosted GPU k8s Nodes."
 on:
   workflow_dispatch: # Only triggering workflow manually.
     inputs:
@@ -6,7 +6,6 @@ on:
         description: 'GHA Runner Scale Set to run workflow on.'
         required: true
         default: mg-fork-gha-runnes-gpu
-        # default: gha-runner-scale-set-nvidia-single-gpu
 
       debug:
           description: 'Run debugging steps?'
@@ -18,29 +17,21 @@ on:
         required: true
         default: "5"
 
-    #   prompt:
-    #     description: 'User test for prompting'
-    #     required: true
-    #     default: "Who is Ironman?"
-
       model:
         description: 'Base model to use for inference.'
         required: true
         default: llama-2-7b-hf
 
       max_train_steps:
-        description: 'Mx number of steps to run Fine Tuning process for'
+        description: 'Max number of steps to run Fine Tuning process for'
         required: true
         default: "6"
 
 
 env:
-  MODELS_PATH: '/data/llama2/models'
+  LLAMA2_MODELS_PATH: '/data/llama2/models'
   DEFAULT_MODEL: 'llama-2-7b-hf'
-  # OUTPUT_PATH: '/tmp/llama/models_ft/Llama-2-7b-peft-samsum-1'
   DEFAULT_DATASET: 'samsum_dataset'
-  # BNB_CUDA_VERSION: '121'
-  # DEFAULT_PROMPT_FILE: 'samsum_prompt.txt'
   FINETUNING_RECIPE_PATH: recipes/finetuning
 
 jobs:
@@ -57,17 +48,17 @@ jobs:
         if: github.event.inputs.debug == 'true'
         run: |
             echo "========= Content of the EFS mount ============="
-            ls -la ${{ env.MODELS_PATH }}
+            ls -la ${{ env.LLAMA2_MODELS_PATH }}
 
       - name: "Check if selected model exists in EFS volume"
         id: check_if_model_exists
         run: |
-            if [ ! -d ${{ env.MODELS_PATH }}/${{ inputs.model }} ]; then
+            if [ ! -d ${{ env.LLAMA2_MODELS_PATH }}/${{ inputs.model }} ]; then
                 echo "Model '${{ inputs.model }}' does not exist in mounted EFS volume, Terminating workflow."
                 exit 1
             fi
             echo "Content of '${{ inputs.model }}' model"
-            ls -la ${{ env.MODELS_PATH }}/${{ inputs.model }}
+            ls -la ${{ env.LLAMA2_MODELS_PATH }}/${{ inputs.model }}
 
             exit 0
 
@@ -97,10 +88,10 @@ jobs:
       - name: "Installing PyTorch and llama_recipes module"
         id: pip_install
         run: |
-          pip install -U pip setuptools
           # pip install -r requirements.txt
           # pip install --extra-index-url https://download.pytorch.org/whl/test/cu118 -e '.[tests,auditnlg,vllm]'
-          # pip install --extra-index-url https://download.pytorch.org/whl/test/cu118 -e '.[auditnlg,vllm]' 
+
+          pip install -U pip setuptools
           pip install --extra-index-url https://download.pytorch.org/whl/test/cu118 -e llama-recipes
 
 
@@ -117,21 +108,23 @@ jobs:
           export OUTPUT_DIR=${GITHUB_WORKSPACE}/outputs/${{ github.sha }}
           mkdir -p ${OUTPUT_DIR}
 
-          cd $GITHUB_WORKSPACE/examples && cat ./${{ env.DEFAULT_PROMPT_FILE }} | python3 -m inference \
-            --model_name ${{ env.MODELS_PATH }}/${{ inputs.model }} \
-            --output_file ${OUTPUT_DIR}/result.txt
+          # cd $GITHUB_WORKSPACE/examples && cat ./${{ env.DEFAULT_PROMPT_FILE }} | python3 -m inference \
+          #   --model_name ${{ env.LLAMA2_MODELS_PATH }}/${{ inputs.model }} \
+          #   --output_file ${OUTPUT_DIR}/result.txt
 
           cd $GITHUB_WORKSPACE_PATH/${{ env.FINETUNING_RECIPE_PATH }} && python3 -m finetuning \
             --max_train_step ${{ inputs.max_train_steps }} \
             --use_peft \
             --peft_method lora \
             --quantization \
-            --model_name ${{ env.MODELS_PATH }}/${{ inputs.model }} \
+            --model_name ${{ env.LLAMA2_MODELS_PATH }}/${{ inputs.model }} \
             --output_file ${OUTPUT_DIR} \
             --batch_size_training 2  \
             --gradient_accumulation_steps 2  \
             --num_epochs 1  \
             --dataset ${{ env.DEFAULT_DATASET }}
+
+          ls -la ./FINETUNING_RESULTS 
 
         #   ls -la ${OUTPUT_DIR}/result.txt
         #   cat ${OUTPUT_DIR}/result.txt
