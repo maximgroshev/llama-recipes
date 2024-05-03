@@ -98,7 +98,7 @@ jobs:
           # pip install --extra-index-url https://download.pytorch.org/whl/test/cu118 -e '.[tests,auditnlg,vllm]'
 
           pip3 install -U pip setuptools
-          pip3 install --extra-index-url https://download.pytorch.org/whl/test/cu118 -e llama-recipes
+          pip3 install --extra-index-url https://download.pytorch.org/whl/test/cu118 -e .
 
       - name: "Running Fine Tuning"
         id: fine_tuning 
