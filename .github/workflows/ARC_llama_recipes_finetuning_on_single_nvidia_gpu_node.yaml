@@ -97,8 +97,8 @@ jobs:
           # pip install -r requirements.txt
           # pip install --extra-index-url https://download.pytorch.org/whl/test/cu118 -e '.[tests,auditnlg,vllm]'
 
-          pip3 install -U pip setuptools
-          pip3 install --extra-index-url https://download.pytorch.org/whl/test/cu118 -e .
+          pip install -U pip setuptools
+          pip install --extra-index-url https://download.pytorch.org/whl/test/cu118 -e .
 
       - name: "Running Fine Tuning"
         id: fine_tuning 
