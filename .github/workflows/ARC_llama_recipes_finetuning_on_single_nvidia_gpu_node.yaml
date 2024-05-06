@@ -85,12 +85,6 @@ jobs:
         run: |
             ls -la ${GITHUB_WORKSPACE}
 
-      - name: "[DEBUG] sleep"
-        id: sleep
-        if: ${{ github.event.inputs.debug == 'true' && github.event.inputs.sleep_time != '' }}
-        run: |
-            sleep ${{ inputs.sleep_time }}
-
       - name: "Installing PyTorch and llama_recipes module"
         id: pip_install
         run: |
@@ -125,6 +119,14 @@ jobs:
 
           ls -la $GITHUB_WORKSPACE/${{ env.FINETUNING_RECIPE_PATH }}
 
+      - name: "[DEBUG] sleep"
+        id: sleep
+        if: ${{ github.event.inputs.debug == 'true' && github.event.inputs.sleep_time != '' }}
+        run: |
+            sleep ${{ inputs.sleep_time }}
+
+
+            
         #   ls -la ${OUTPUT_DIR}/result.txt
         #   cat ${OUTPUT_DIR}/result.txt
 
