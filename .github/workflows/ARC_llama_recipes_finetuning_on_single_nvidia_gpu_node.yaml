@@ -111,7 +111,7 @@ jobs:
           #   --model_name ${{ env.LLAMA2_MODELS_PATH }}/${{ inputs.model }} \
           #   --output_file ${OUTPUT_DIR}/result.txt
 
-          cd $GITHUB_WORKSPACE_PATH/${{ env.FINETUNING_RECIPE_PATH }} && python3 -m finetuning \
+          cd $GITHUB_WORKSPACE/${{ env.FINETUNING_RECIPE_PATH }} && python3 -m finetuning \
             --max_train_step ${{ inputs.max_train_steps }} \
             --use_peft \
             --peft_method lora \
