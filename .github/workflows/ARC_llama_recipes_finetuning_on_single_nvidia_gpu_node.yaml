@@ -123,7 +123,7 @@ jobs:
             --num_epochs 1  \
             --dataset ${{ env.DEFAULT_DATASET }}
 
-          ls -la $GITHUB_WORKSPACE/${{ env.FINETUNING_RECIPE_PATH }}/FINETUNING_RESULTS 
+          ls -la $GITHUB_WORKSPACE/${{ env.FINETUNING_RECIPE_PATH }}
 
         #   ls -la ${OUTPUT_DIR}/result.txt
         #   cat ${OUTPUT_DIR}/result.txt
