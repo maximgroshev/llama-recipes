@@ -29,10 +29,11 @@ on:
 
 
 env:
-  LLAMA2_MODELS_PATH: '/data/llama2/models'
-  DEFAULT_MODEL: 'llama-2-7b-hf'
-  DEFAULT_DATASET: 'samsum_dataset'
+  LLAMA2_MODELS_PATH: /data/llama2/models
+  DEFAULT_MODEL: llama-2-7b-hf
+  DEFAULT_DATASET: samsum_dataset
   FINETUNING_RECIPE_PATH: recipes/finetuning
+  FINETUNING_OUTPUT_PATH: PEFT/model
 
 jobs:
   execute_workflow:
@@ -115,9 +116,10 @@ jobs:
             --batch_size_training 2  \
             --gradient_accumulation_steps 2  \
             --num_epochs 1  \
-            --dataset ${{ env.DEFAULT_DATASET }}
+            --dataset ${{ env.DEFAULT_DATASET }} \
+            --output_dir $GITHUB_WORKSPACE/${{ env.FINETUNING_RECIPE_PATH }}/${{ env.FINETUNING_OUTPUT_PATH }}
 
-          ls -la $GITHUB_WORKSPACE/${{ env.FINETUNING_RECIPE_PATH }}
+          ls -la $GITHUB_WORKSPACE/${{ env.FINETUNING_RECIPE_PATH }}/${{ env.FINETUNING_OUTPUT_PATH }}
 
       - name: "[DEBUG] sleep"
         id: sleep
@@ -126,7 +128,7 @@ jobs:
             sleep ${{ inputs.sleep_time }}
 
 
-            
+
         #   ls -la ${OUTPUT_DIR}/result.txt
         #   cat ${OUTPUT_DIR}/result.txt
 
